@@ -60,7 +60,8 @@
 
    ```bash
    cd ../redismapdemo
-   mvn exec:java -Dexec.mainClass="Main"
+   mvn package
+   java -jar .\target\redismapdemo-1.0-SNAPSHOT.jar
    ```
 
 ## Тестирование
