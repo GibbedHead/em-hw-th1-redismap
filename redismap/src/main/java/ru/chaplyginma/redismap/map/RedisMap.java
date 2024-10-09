@@ -7,6 +7,29 @@ import ru.chaplyginma.redismap.exception.RedisMapPutException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * A {@code RedisMap} is a Map implementation that stores key-value pairs in a Redis database.
+ * This class utilizes the Jedis library to interact with Redis, providing a simple and efficient
+ * way to manage data in a distributed environment.
+ *
+ * <p>
+ * The keys are stored with a unique prefix to avoid collisions with other keys in the Redis database.
+ * When using this class, all keys are treated as Strings, and values are also stored as Strings.
+ * </p>
+ *
+ * <p>
+ * This implementation follows the standard behavior of the {@link Map} interface, including methods
+ * for adding, removing, and retrieving entries. It also provides methods to check for key existence,
+ * clear the map, and retrieve key sets and value collections.
+ * </p>
+ *
+ * <p>
+ * Note that all operations that modify the map (such as {@code put}, {@code remove}, and {@code clear})
+ * will directly affect the underlying Redis database.
+ * </p>
+ *
+ * @see Jedis
+ */
 public class RedisMap implements Map<String, String> {
 
     private final Jedis jedis;
