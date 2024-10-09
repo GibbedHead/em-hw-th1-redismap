@@ -1,7 +1,7 @@
 package ru.chaplyginma.redismap.map;
 
+import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
-import ru.chaplyginma.redismap.exception.RedisMapPutAllIllegalArgumentException;
 import ru.chaplyginma.redismap.exception.RedisMapPutException;
 
 import java.util.*;
@@ -51,10 +51,7 @@ public class RedisMap implements Map<String, String> {
     }
 
     @Override
-    public void putAll(Map<? extends String, ? extends String> m) {
-        if (m == null) {
-            throw new RedisMapPutAllIllegalArgumentException("Map can't be null");
-        }
+    public void putAll(@NotNull Map<? extends String, ? extends String> m) {
         m.forEach(this::put);
     }
 
@@ -64,6 +61,7 @@ public class RedisMap implements Map<String, String> {
     }
 
     @Override
+    @NotNull
     public Set<String> keySet() {
         return jedis.keys(keysPattern).stream()
                 .map(key -> key.substring((prefix + ":").length()))
@@ -71,6 +69,7 @@ public class RedisMap implements Map<String, String> {
     }
 
     @Override
+    @NotNull
     public Collection<String> values() {
         return jedis.keys(prefix + ":*").stream()
                 .map(jedis::get)
@@ -79,6 +78,7 @@ public class RedisMap implements Map<String, String> {
 
 
     @Override
+    @NotNull
     public Set<Entry<String, String>> entrySet() {
         return jedis.keys(prefix + ":*").stream()
                 .map(key -> {
