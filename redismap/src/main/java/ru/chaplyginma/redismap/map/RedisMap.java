@@ -2,6 +2,7 @@ package ru.chaplyginma.redismap.map;
 
 import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
+import ru.chaplyginma.redismap.exception.RedisMapDeleteException;
 import ru.chaplyginma.redismap.exception.RedisMapPutException;
 
 import java.util.*;
@@ -43,7 +44,7 @@ public class RedisMap implements Map<String, String> {
     }
 
     @Override
-    public String put(String key, String value) {
+    public String put(String key, String value) throws RedisMapPutException {
         if (key == null) {
             key = "null";
         }
@@ -60,17 +61,23 @@ public class RedisMap implements Map<String, String> {
     }
 
     @Override
-    public String remove(Object key) {
+    public String remove(Object key) throws RedisMapDeleteException {
         if (key == null) {
             key = "null";
         }
         String realKey = addPrefix(key.toString());
 
-        String result = jedis.get(realKey);
+        String getOldResult = jedis.get(realKey);
 
-        jedis.del(realKey);
+        if (getOldResult == null) {
+            return null;
+        }
 
-        return result;
+        if (jedis.del(realKey) > 0) {
+            return getOldResult;
+        }
+
+        throw new RedisMapDeleteException("Error deleting key:`%s`".formatted(key));
     }
 
     @Override
