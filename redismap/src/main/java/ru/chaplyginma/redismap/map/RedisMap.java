@@ -2,11 +2,12 @@ package ru.chaplyginma.redismap.map;
 
 import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.resps.ScanResult;
 import ru.chaplyginma.redismap.exception.RedisMapDeleteException;
 import ru.chaplyginma.redismap.exception.RedisMapPutException;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 /**
  * A {@code RedisMap} is a Map implementation that stores key-value pairs in a Redis database.
@@ -34,13 +35,12 @@ import java.util.stream.Collectors;
 public class RedisMap implements Map<String, String> {
 
     private final Jedis jedis;
-    private final String prefix;
     private final String keysPattern;
 
     public RedisMap(Jedis jedis) {
         this.jedis = jedis;
-        this.prefix = "redismap:" + UUID.randomUUID();
-        this.keysPattern = prefix + ":*";
+        String prefix = "redismap:" + UUID.randomUUID();
+        this.keysPattern = prefix + ":";
     }
 
     @Override
@@ -93,30 +93,40 @@ public class RedisMap implements Map<String, String> {
     @Override
     @NotNull
     public Set<String> keySet() {
-        return jedis.keys(keysPattern).stream()
-                .map(key -> key.substring((prefix + ":").length()))
-                .collect(Collectors.toSet());
+        Set<String> keys = new HashSet<>();
+        scanKeys(key -> {
+            if (key.startsWith(keysPattern)) {
+                keys.add(key.substring((keysPattern).length()));
+            }
+        });
+        return keys;
     }
 
     @Override
     @NotNull
     public Collection<String> values() {
-        return jedis.keys(prefix + ":*").stream()
-                .map(jedis::get)
-                .toList();
+        List<String> values = new ArrayList<>();
+        scanKeys(key -> {
+            if (key.startsWith(keysPattern)) {
+                values.add(jedis.get(key));
+            }
+        });
+        return values;
     }
 
 
     @Override
     @NotNull
     public Set<Entry<String, String>> entrySet() {
-        return jedis.keys(prefix + ":*").stream()
-                .map(key -> {
-                    String value = jedis.get(key);
-                    String strippedKey = key.substring((prefix + ":").length());
-                    return new AbstractMap.SimpleEntry<>(strippedKey, value);
-                })
-                .collect(Collectors.toSet());
+        Set<Entry<String, String>> entries = new HashSet<>();
+        scanKeys(key -> {
+            if (key.startsWith(keysPattern)) {
+                String value = jedis.get(key);
+                String strippedKey = key.substring((keysPattern).length());
+                entries.add(new AbstractMap.SimpleEntry<>(strippedKey, value));
+            }
+        });
+        return entries;
     }
 
     @Override
@@ -129,7 +139,13 @@ public class RedisMap implements Map<String, String> {
 
     @Override
     public int size() {
-        return jedis.keys(keysPattern).size();
+        final int[] size = {0};
+        scanKeys(key -> {
+            if (key.startsWith(keysPattern)) {
+                size[0]++;
+            }
+        });
+        return size[0];
     }
 
     @Override
@@ -147,12 +163,26 @@ public class RedisMap implements Map<String, String> {
 
     @Override
     public boolean containsValue(Object value) {
-        return jedis.keys(prefix + ":*").stream()
-                .map(jedis::get)
-                .anyMatch(v -> v != null && v.equals(value));
+        final boolean[] found = {false};
+        scanKeys(key -> {
+            if (key.startsWith(keysPattern) && value.equals(jedis.get(key))) {
+                found[0] = true;
+            }
+        });
+        return found[0];
     }
 
     private String addPrefix(String key) {
-        return prefix + ":" + key;
+        return keysPattern + key;
+    }
+
+    private void scanKeys(Consumer<String> keyConsumer) {
+        String cursor = "0";
+        do {
+            ScanResult<String> scanResult = jedis.scan(cursor);
+            List<String> foundKeys = scanResult.getResult();
+            foundKeys.forEach(keyConsumer);
+            cursor = scanResult.getCursor();
+        } while (!cursor.equals("0"));
     }
 }
