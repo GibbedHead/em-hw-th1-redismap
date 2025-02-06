@@ -80,7 +80,7 @@ public class RedisMap implements Map<String, String> {
 
     @Override
     public void clear() {
-        jedis.keys(keysPattern).forEach(jedis::del);
+        jedis.flushAll();
     }
 
     @Override
